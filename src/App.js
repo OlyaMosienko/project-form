@@ -1,8 +1,46 @@
+import * as yup from 'yup';
+// import { useForm } from 'react-hook-form';
+// import { yupResolver } from '@hookform/resolvers/yup';
 import { useRef, useState } from 'react';
 import styles from './App.module.css';
 
 const sendFormData = (formData) => {
 	console.log(formData);
+};
+
+const emailChangeSchema = yup
+	.string()
+	.required('Поле почты не должно быть пустым')
+	.matches(
+		/([a-zA-Z0-9._-]+@[a-zA-Z0-9._-]+\.[a-zA-Z0-9_-]+)/,
+		'Введите корректный почтовый адрес. Он должен содержать символ @. (Например, example@mail.ru)',
+	);
+
+const passwordChangeSchema = yup
+	.string()
+	.required('Поле пароля должно быть заполнено')
+	.matches(
+		/(?=.*[0-9])(?=.*[!@#$%^&*])(?=.*[a-z])(?=.*[A-Z])/,
+		'Используйте более надежный пароль. Пароль должен содержать хотя бы одну цифру, хотя бы один символ и буквы латинского алфавита в верхнем и нижнем регистре',
+	)
+	.min(6, 'Пароль должен содержать не меньше 6 символов')
+	.max(20, 'Пароль не может содержать больше 20 символов');
+
+const passwordRepeatChangeSchema = yup
+	.string()
+	.required('Поле повтора пароля должно быть заполнено')
+	.oneOf([yup.ref('password')], 'Пароли не совпадают');
+
+const validateAndGetErrorMessage = (schema, value) => {
+	let errorMessage = null;
+
+	try {
+		schema.validateSync(value);
+	} catch ({ errors }) {
+		errorMessage = errors.join('\n');
+	}
+
+	return errorMessage;
 };
 
 export const App = () => {
@@ -29,39 +67,13 @@ export const App = () => {
 	const isDisabledButton =
 		!!error || email === '' || password === '' || passwordRepeat === '';
 
-	const validateEmail = (value) => {
-		if (!value.includes('@')) {
-			return 'Введите корректный почтовый адрес. Он должен содержать символ @. (Например, example.mail.ru)';
-		} else if (value.length === 0) {
-			return 'Поле почты не должно быть пустым';
-		}
-		return null;
-	};
-
-	const validatePassword = (value) => {
-		if (!value) {
-			return 'Поле пароля должно быть заполнено';
-		} else if (!/(?=.*[0-9])(?=.*[!@#$%^&*])(?=.*[a-z])(?=.*[A-Z])/.test(value)) {
-			return 'Используйте более надежный пароль. Пароль должен содержать хотя бы одну цифру, хотя бы один символ и буквы латинского алфавита в верхнем и нижнем регистре';
-		} else if (value.length < 6 || value.length > 20) {
-			return 'Пароль должен состоять из символов от 6 до 20';
-		}
-		return null;
-	};
-
-	const validatePasswordRepeat = (value) => {
-		if (!value) {
-			return 'Поле повтора пароля должно быть заполнено';
-		} else if (value !== password) {
-			return 'Введенный пароль не соответствует заданному выше. Попробуйте снова.';
-		}
-		return null;
-	};
-
 	const checkAllFields = () => {
-		const emailError = validateEmail(email);
-		const passwordError = validatePassword(password);
-		const passwordRepeatError = validatePasswordRepeat(passwordRepeat);
+		const emailError = validateAndGetErrorMessage(emailChangeSchema, email);
+		const passwordError = validateAndGetErrorMessage(passwordChangeSchema, password);
+		const passwordRepeatError = validateAndGetErrorMessage(
+			passwordRepeatChangeSchema,
+			passwordRepeat,
+		);
 
 		if (emailError || passwordError || passwordRepeatError) {
 			setError(emailError || passwordError || passwordRepeatError);
@@ -77,7 +89,10 @@ export const App = () => {
 		setFormData({ ...formData, [field]: newValue });
 
 		if (field === 'passwordRepeat') {
-			const repeatError = validatePasswordRepeat(newValue);
+			const repeatError = validateAndGetErrorMessage(
+				passwordRepeatChangeSchema,
+				newValue,
+			);
 			setError(repeatError);
 		} else {
 			checkAllFields();
